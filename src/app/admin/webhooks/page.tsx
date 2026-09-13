@@ -39,13 +39,17 @@ export default async function AdminWebhooksPage() {
                   <p className="font-medium">{event.eventType}</p>
                   <p className="text-xs text-muted-dim">{event.buyerEmail ?? "sem e-mail"}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  {event.errorMessage && <span className="text-xs text-danger">{event.errorMessage}</span>}
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  {event.errorMessage && (
+                    <span className="text-xs text-danger break-words">{event.errorMessage}</span>
+                  )}
                   <Badge tone={statusTone[event.status]}>{statusLabel[event.status]}</Badge>
-                  <span className="text-xs text-muted-dim">{event.createdAt.toLocaleString("pt-BR")}</span>
+                  <span className="text-xs text-muted-dim whitespace-nowrap">
+                    {event.createdAt.toLocaleString("pt-BR")}
+                  </span>
                 </div>
               </summary>
-              <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-background p-3 text-xs text-muted">
+              <pre className="mt-3 max-h-72 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all rounded-lg bg-background p-3 text-xs text-muted">
                 {JSON.stringify(event.rawPayload, null, 2)}
               </pre>
             </details>
