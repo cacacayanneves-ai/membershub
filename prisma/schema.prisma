@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+}
+
+enum UserProductStatus {
+  ACTIVE
+  REFUNDED
+  CANCELED
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  ERROR
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  name               String
+  email              String        @unique
+  passwordHash       String
+  role               Role          @default(CUSTOMER)
+  mustChangePassword Boolean       @default(true)
+  status             UserStatus    @default(ACTIVE)
+  lastLoginAt        DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  userProducts       UserProduct[]
+
+  @@map("users")
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  name             String
+  slug             String        @unique
+  description      String
+  benefits         String?
+  imageUrl         String?
+  hotmartProductId String?       @unique
+  checkoutUrl      String?
+  priceCents       Int?
+  status           ProductStatus @default(DRAFT)
+  order            Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  contents         Content[]
+  userProducts     UserProduct[]
+
+  @@map("products")
+}
+
+model Content {
+  id               String        @id @default(cuid())
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  imageUrl         String?
+  order            Int           @default(0)
+  releaseAfterDays Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  files            ContentFile[]
+
+  @@map("contents")
+}
+
+model ContentFile {
+  id         String   @id @default(cuid())
+  contentId  String
+  content    Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  label      String
+  storageKey String
+  sizeBytes  Int?
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@map("content_files")
+}
+
+model UserProduct {
+  id            String             @id @default(cuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  status        UserProductStatus  @default(ACTIVE)
+  transactionId String             @unique
+  purchaseDate  DateTime
+  accessStart   DateTime
+  createdAt     DateTime           @default(now())
+
+  @@unique([userId, productId])
+  @@map("user_products")
+}
+
+model WebhookEvent {
+  id            String        @id @default(cuid())
+  provider      String        @default("hotmart")
+  eventType     String
+  transactionId String?
+  buyerEmail    String?
+  rawPayload    Json
+  status        WebhookStatus @default(RECEIVED)
+  errorMessage  String?
+  processedAt   DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@map("webhook_events")
+}
