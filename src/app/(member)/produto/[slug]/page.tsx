@@ -23,7 +23,7 @@ export default async function ProductPage({ params }: PageProps<"/produto/[slug]
 
     return (
       <div className="mx-auto max-w-2xl animate-fade-in">
-        <ProductCover imageUrl={product.imageUrl} name={product.name} className="mb-8 h-56 w-full rounded-2xl" />
+        <ProductCover imageUrl={product.imageUrl} name={product.name} className="mb-8 h-56 w-full rounded-2xl" fit="contain" />
 
         <div className="mb-3 flex items-center gap-2">
           <Lock className="size-4 text-muted-dim" strokeWidth={2.25} />
@@ -63,7 +63,7 @@ export default async function ProductPage({ params }: PageProps<"/produto/[slug]
   return (
     <div className="animate-fade-in space-y-8">
       <div>
-        <ProductCover imageUrl={product.imageUrl} name={product.name} className="mb-6 h-64 w-full rounded-2xl" />
+        <ProductCover imageUrl={product.imageUrl} name={product.name} className="mb-6 h-64 w-full rounded-2xl" fit="contain" />
         <h1 className="text-2xl font-semibold tracking-tight">{product.name}</h1>
         <p className="mt-2 text-muted">{product.description}</p>
       </div>
