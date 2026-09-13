@@ -42,6 +42,33 @@ Veja `.env.example`. As mais importantes:
 - `RESEND_API_KEY` / `EMAIL_FROM`: envio das credenciais de acesso por e-mail. Sem a chave, as credenciais aparecem no log do servidor (útil em dev).
 - `STORAGE_DRIVER`: `local` (padrão, grava em `./storage`) ou `r2` (Cloudflare R2 — preencha `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`).
 
+## Upload de arquivos de conteúdo (packs grandes, muitos arquivos)
+
+Funções serverless (Vercel) têm um limite de tamanho de payload bem menor do que um
+arquivo de conteúdo real costuma ter. Por isso, com `STORAGE_DRIVER=r2`, o upload de
+arquivos de conteúdo (`ContentFileUploader`) não passa o arquivo pela função da Vercel:
+o navegador pede uma URL assinada (`getUploadUrl` em `lib/storage.ts`) e manda o arquivo
+**direto para o R2** via `PUT`. Isso também é o que permite selecionar vários arquivos de
+uma vez (uma pasta inteira de figurinhas, por exemplo) sem esbarrar em limite de tamanho.
+
+Para isso funcionar, o **bucket precisa de uma política de CORS** liberando `PUT` a partir
+do domínio da sua aplicação (Cloudflare R2 → bucket → Settings → CORS Policy):
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://SEU-DOMINIO-AQUI"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["*"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+Sem essa política, o navegador bloqueia o `PUT` direto por CORS. Com `STORAGE_DRIVER=local`
+(dev), esse passo não é necessário — o upload cai automaticamente no caminho tradicional
+(via `uploadContentFileAction`), sem URL assinada.
+
 ## Integração com a Hotmart
 
 Endpoint do webhook: `POST /api/webhooks/hotmart`.

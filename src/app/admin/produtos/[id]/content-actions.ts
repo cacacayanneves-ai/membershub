@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/guards";
-import { storeFile, deleteFile, generateStorageKey, extractOwnedImageKey } from "@/lib/storage";
+import { storeFile, deleteFile, generateStorageKey, extractOwnedImageKey, getUploadUrl } from "@/lib/storage";
 
 const contentSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório."),
@@ -135,18 +135,57 @@ export async function uploadContentFileAction(
   const key = generateStorageKey(`contents/${contentId}`, file.name);
   await storeFile(key, buffer, file.type || "application/octet-stream");
 
-  const lastFile = await prisma.contentFile.findFirst({ where: { contentId }, orderBy: { order: "desc" } });
-
   await prisma.contentFile.create({
-    data: {
-      contentId,
-      label,
-      storageKey: key,
-      sizeBytes: file.size,
-      order: (lastFile?.order ?? -1) + 1,
-    },
+    data: { contentId, label, storageKey: key, sizeBytes: file.size, order: await nextFileOrder(contentId) },
   });
 
+  revalidatePath(`/admin/produtos/${productId}`);
+  return {};
+}
+
+async function nextFileOrder(contentId: string) {
+  const lastFile = await prisma.contentFile.findFirst({ where: { contentId }, orderBy: { order: "desc" } });
+  return (lastFile?.order ?? -1) + 1;
+}
+
+export type PresignResult = { error?: string; direct?: boolean; uploadUrl?: string; key?: string };
+
+/**
+ * Passo 1 do upload direto pro R2: gera a URL assinada. O navegador manda o
+ * arquivo direto pra ela (PUT), sem passar pelo corpo da função da Vercel.
+ * No driver local não há URL assinada — `direct: false` avisa o cliente pra
+ * usar `uploadContentFileAction` (upload comum) como alternativa.
+ */
+export async function requestContentFileUploadUrl(
+  contentId: string,
+  filename: string,
+  contentType: string,
+  fileSize: number
+): Promise<PresignResult> {
+  await requireAdmin();
+  if (fileSize > 500 * 1024 * 1024) {
+    return { error: "Arquivo muito grande (máx. 500MB)." };
+  }
+
+  const key = generateStorageKey(`contents/${contentId}`, filename);
+  const uploadUrl = await getUploadUrl(key, contentType || "application/octet-stream");
+  if (!uploadUrl) return { direct: false };
+  return { direct: true, uploadUrl, key };
+}
+
+/** Passo 2 do upload direto: depois que o navegador confirma que o PUT no R2 deu certo,
+ * grava o registro do arquivo no banco (aqui não trafega o arquivo, só metadados). */
+export async function confirmContentFileUpload(
+  contentId: string,
+  productId: string,
+  key: string,
+  label: string,
+  sizeBytes: number
+): Promise<{ error?: string }> {
+  await requireAdmin();
+  await prisma.contentFile.create({
+    data: { contentId, label, storageKey: key, sizeBytes, order: await nextFileOrder(contentId) },
+  });
   revalidatePath(`/admin/produtos/${productId}`);
   return {};
 }

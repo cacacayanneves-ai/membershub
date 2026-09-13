@@ -136,6 +136,23 @@ export async function getObjectBuffer(key: string): Promise<{ buffer: Buffer; co
   return { buffer, contentType };
 }
 
+/**
+ * Gera uma URL assinada para o NAVEGADOR enviar o arquivo direto pro R2 (PUT),
+ * sem passar pelo corpo da requisição da função serverless da Vercel — importante
+ * porque funções serverless têm um limite de tamanho de payload bem menor do que
+ * arquivos reais de conteúdo (packs grandes, muitas figurinhas, etc.). No driver
+ * local não existe equivalente (retorna null; o chamador deve usar `storeFile` via
+ * o upload comum, que funciona bem localmente pois não tem esse limite).
+ */
+export async function getUploadUrl(key: string, contentType: string): Promise<string | null> {
+  if (driver !== "r2") return null;
+  return getSignedUrl(
+    getR2Client(),
+    new PutObjectCommand({ Bucket: r2Bucket(), Key: key, ContentType: contentType }),
+    { expiresIn: 300 }
+  );
+}
+
 /** `scope` vira o "diretório" da key, ex: "products", "contents/<id>". */
 export function generateStorageKey(scope: string, filename: string) {
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");

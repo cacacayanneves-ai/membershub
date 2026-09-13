@@ -6,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
-import { File as FileIcon, Trash2, Upload } from "lucide-react";
+import { ContentFileUploader } from "./ContentFileUploader";
+import { File as FileIcon, Trash2 } from "lucide-react";
 import {
   updateContentAction,
   deleteContentAction,
-  uploadContentFileAction,
   deleteContentFileAction,
   type ContentFormState,
-  type FileFormState,
 } from "./content-actions";
 import type { Content, ContentFile } from "@prisma/client";
 
@@ -34,9 +33,6 @@ export function ContentEditor({
 }) {
   const updateAction = updateContentAction.bind(null, content.id, productId);
   const [state, formAction, pending] = useActionState<ContentFormState, FormData>(updateAction, {});
-
-  const uploadAction = uploadContentFileAction.bind(null, content.id, productId);
-  const [uploadState, uploadFormAction, uploadPending] = useActionState<FileFormState, FormData>(uploadAction, {});
 
   const formId = `content-form-${content.id}`;
 
@@ -106,20 +102,7 @@ export function ContentEditor({
           ))}
         </div>
 
-        <form action={uploadFormAction} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Input name="label" placeholder="Nome do arquivo (opcional)" className="sm:max-w-52" />
-          <input
-            name="file"
-            type="file"
-            required
-            className="flex-1 text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface-hover file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground"
-          />
-          <Button type="submit" size="sm" variant="secondary" disabled={uploadPending}>
-            <Upload className="size-3.5" />
-            {uploadPending ? "Enviando..." : "Enviar"}
-          </Button>
-        </form>
-        {uploadState.error && <FieldError>{uploadState.error}</FieldError>}
+        <ContentFileUploader contentId={content.id} productId={productId} />
       </div>
     </Card>
   );
