@@ -70,9 +70,10 @@ Eventos tratados:
 
 ## Decisões e simplificações deliberadas do MVP
 
-- **Imagens de produto/conteúdo são URLs**, não upload — evita construir um segundo pipeline de
-  upload/processamento de imagem só para capas. Os **arquivos de conteúdo** (o que o cliente
-  baixa) já usam upload real, gravado no storage configurado.
+- **Imagens de produto/conteúdo** são upload real (mesmo storage configurado dos arquivos de
+  conteúdo), servidas por `/api/images/[...key]` — essa rota exige apenas sessão autenticada (sem
+  checagem de posse do produto), já que a capa precisa aparecer inclusive nos produtos bloqueados
+  da vitrine de upsell.
 - **Sem reprocessamento automático de webhook**: se a Hotmart mandar um `PURCHASE_APPROVED` para
   um `hotmartProductId` que ainda não existe no admin, o evento fica marcado como erro em
   `/admin/webhooks` — cadastre o produto e, se necessário, reenvie o evento pelo simulador da

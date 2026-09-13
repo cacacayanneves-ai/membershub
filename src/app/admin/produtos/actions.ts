@@ -6,12 +6,12 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/guards";
 import { slugify } from "@/lib/utils";
+import { storeFile, deleteFile, generateStorageKey, extractOwnedImageKey } from "@/lib/storage";
 
 const productSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório."),
   description: z.string().min(1, "Descrição é obrigatória."),
   benefits: z.string().optional(),
-  imageUrl: z.string().url("URL de imagem inválida.").optional().or(z.literal("")),
   hotmartProductId: z.string().optional(),
   checkoutUrl: z.string().url("URL de checkout inválida.").optional().or(z.literal("")),
   price: z.string().optional(),
@@ -38,6 +38,30 @@ async function findFreeSlug(base: string) {
   return slug;
 }
 
+/** Processa o upload opcional de imagem de capa. Retorna a URL final (mantém a
+ * atual se nenhum arquivo novo foi enviado) e limpa o arquivo antigo do storage. */
+async function resolveImageUpload(formData: FormData): Promise<string | null> {
+  const file = formData.get("image");
+  const currentImageUrl = (formData.get("currentImageUrl") as string) || null;
+
+  if (!(file instanceof File) || file.size === 0) {
+    return currentImageUrl;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Imagem muito grande (máx. 10MB).");
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const key = generateStorageKey("products", file.name);
+  await storeFile(key, buffer, file.type || "application/octet-stream");
+
+  const oldKey = extractOwnedImageKey(currentImageUrl);
+  if (oldKey) await deleteFile(oldKey);
+
+  return `/api/images/${key}`;
+}
+
 export async function createProductAction(
   _prev: ProductFormState,
   formData: FormData
@@ -52,6 +76,13 @@ export async function createProductAction(
     if (existing) return { error: "Já existe um produto com esse Hotmart Product ID." };
   }
 
+  let imageUrl: string | null;
+  try {
+    imageUrl = await resolveImageUpload(formData);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Falha ao enviar a imagem." };
+  }
+
   const slug = await findFreeSlug(slugify(parsed.data.name));
 
   const product = await prisma.product.create({
@@ -60,7 +91,7 @@ export async function createProductAction(
       slug,
       description: parsed.data.description,
       benefits: parsed.data.benefits || null,
-      imageUrl: parsed.data.imageUrl || null,
+      imageUrl,
       hotmartProductId,
       checkoutUrl: parsed.data.checkoutUrl || null,
       priceCents: parsePriceToCents(parsed.data.price),
@@ -90,13 +121,20 @@ export async function updateProductAction(
     }
   }
 
+  let imageUrl: string | null;
+  try {
+    imageUrl = await resolveImageUpload(formData);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Falha ao enviar a imagem." };
+  }
+
   await prisma.product.update({
     where: { id: productId },
     data: {
       name: parsed.data.name,
       description: parsed.data.description,
       benefits: parsed.data.benefits || null,
-      imageUrl: parsed.data.imageUrl || null,
+      imageUrl,
       hotmartProductId,
       checkoutUrl: parsed.data.checkoutUrl || null,
       priceCents: parsePriceToCents(parsed.data.price),

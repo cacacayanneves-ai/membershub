@@ -5,6 +5,7 @@ import { Input, Label, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { File as FileIcon, Trash2, Upload } from "lucide-react";
 import {
   updateContentAction,
@@ -42,16 +43,12 @@ export function ContentEditor({
   return (
     <Card className="p-5">
       <form id={formId} action={formAction} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor={`name-${content.id}`}>Nome</Label>
-            <Input id={`name-${content.id}`} name="name" defaultValue={content.name} required />
-          </div>
-          <div>
-            <Label htmlFor={`imageUrl-${content.id}`}>Imagem (opcional)</Label>
-            <Input id={`imageUrl-${content.id}`} name="imageUrl" defaultValue={content.imageUrl ?? ""} placeholder="https://..." />
-          </div>
+        <div>
+          <Label htmlFor={`name-${content.id}`}>Nome</Label>
+          <Input id={`name-${content.id}`} name="name" defaultValue={content.name} required />
         </div>
+
+        <ImageUploadField label="Imagem (opcional)" currentImageUrl={content.imageUrl} />
         <div>
           <Label htmlFor={`description-${content.id}`}>Descrição</Label>
           <Input id={`description-${content.id}`} name="description" defaultValue={content.description ?? ""} />

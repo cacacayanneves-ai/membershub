@@ -96,7 +96,7 @@ export async function getFileForDownload(key: string, downloadFilename?: string)
 
 export async function deleteFile(key: string) {
   if (driver === "r2") {
-    await getR2Client().send(new DeleteObjectCommand({ Bucket: r2Bucket(), Key: key }));
+    await getR2Client().send(new DeleteObjectCommand({ Bucket: r2Bucket(), Key: key })).catch(() => {});
     return;
   }
   const filePath = localPath(key);
@@ -104,7 +104,53 @@ export async function deleteFile(key: string) {
   await unlink(`${filePath}.meta.json`).catch(() => {});
 }
 
-export function generateStorageKey(contentId: string, filename: string) {
+async function streamToBuffer(stream: unknown): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream as AsyncIterable<Buffer | Uint8Array>) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Lê o arquivo inteiro em memória (buffer), nos dois drivers. Usado para imagens
+ * de capa (product/content), que são servidas por uma URL estável (`/api/images/...`)
+ * em vez da URL assinada e temporária usada nos downloads de conteúdo pago.
+ */
+export async function getObjectBuffer(key: string): Promise<{ buffer: Buffer; contentType: string }> {
+  if (driver === "r2") {
+    const result = await getR2Client().send(new GetObjectCommand({ Bucket: r2Bucket(), Key: key }));
+    const buffer = await streamToBuffer(result.Body);
+    return { buffer, contentType: result.ContentType || "application/octet-stream" };
+  }
+
+  const filePath = localPath(key);
+  const buffer = await readFile(filePath);
+  let contentType = "application/octet-stream";
+  try {
+    const meta = JSON.parse(await readFile(`${filePath}.meta.json`, "utf-8"));
+    contentType = meta.contentType || contentType;
+  } catch {
+    // sem metadata, usa o content-type genérico
+  }
+  return { buffer, contentType };
+}
+
+/** `scope` vira o "diretório" da key, ex: "products", "contents/<id>". */
+export function generateStorageKey(scope: string, filename: string) {
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return `contents/${contentId}/${crypto.randomUUID()}-${safeName}`;
+  return `${scope}/${crypto.randomUUID()}-${safeName}`;
+}
+
+/** Extrai a storage key de uma URL gerada por nós (`/api/images/<key>`), ou null
+ * se a URL não for uma das nossas (ex: um link externo salvo antes desta feature). */
+export function extractOwnedImageKey(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) return null;
+  const prefix = "/api/images/";
+  if (!imageUrl.startsWith(prefix)) return null;
+  return imageUrl
+    .slice(prefix.length)
+    .split("/")
+    .map((segment) => decodeURIComponent(segment))
+    .join("/");
 }

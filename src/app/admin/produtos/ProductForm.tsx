@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import type { Product } from "@prisma/client";
 import type { ProductFormState } from "./actions";
 
@@ -51,10 +52,7 @@ export function ProductForm({
         />
       </div>
 
-      <div>
-        <Label htmlFor="imageUrl">URL da imagem de capa</Label>
-        <Input id="imageUrl" name="imageUrl" defaultValue={product?.imageUrl ?? ""} placeholder="https://..." />
-      </div>
+      <ImageUploadField label="Imagem de capa" currentImageUrl={product?.imageUrl} />
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
