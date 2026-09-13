@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
 import { logoutAction } from "@/lib/auth/actions";
+import { Logo } from "@/components/logo";
 import { LogOut } from "lucide-react";
 
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
@@ -15,9 +16,7 @@ export default async function MemberLayout({ children }: { children: React.React
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="flex size-7 items-center justify-center rounded-lg bg-accent/10 border border-accent/20">
-              <span className="text-xs font-semibold text-accent">M</span>
-            </div>
+            <Logo className="size-8" />
             <span className="text-sm font-semibold tracking-tight">Members Hub</span>
           </Link>
 

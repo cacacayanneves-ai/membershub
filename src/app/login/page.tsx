@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { Card } from "@/components/ui/card";
+import { Logo } from "@/components/logo";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage() {
@@ -14,9 +15,7 @@ export default async function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm animate-fade-in">
         <div className="mb-10 text-center">
-          <div className="mx-auto mb-6 flex size-11 items-center justify-center rounded-xl border border-accent/20 bg-accent/10">
-            <span className="font-semibold text-accent">M</span>
-          </div>
+          <Logo className="mx-auto mb-6 size-12" />
           <h1 className="text-2xl font-semibold tracking-tight">Bem-vindo de volta.</h1>
           <p className="mt-2 text-sm text-muted">Entre para acessar seus produtos.</p>
         </div>
